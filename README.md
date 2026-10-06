@@ -12,16 +12,18 @@ The model weights are bundled with the package.
 
 ## Usage
 
+Installing provides the `suv_id` and `sul_id` commands (also runnable as `python -m id_uptake_values.suv` / `.sul`).
+
 Inputs are NIfTI files: PET, CT, and TotalSegmentator segmentations (`total`, `body`, and for SUL also `tissue`).
 
 ```
 # SUV
-python -m id_uptake_values.suv --pet pet.nii.gz --ct ct.nii.gz \
+suv_id --pet pet.nii.gz --ct ct.nii.gz \
     --totalseg total.nii.gz --bodyseg body.nii.gz \
     --output-image suv.nii.gz --output-json suv.json
 
 # SUL (optionally with a debug plot of the alignment and nearest-neighbour fit)
-python -m id_uptake_values.sul --pet pet.nii.gz --ct ct.nii.gz \
+sul_id --pet pet.nii.gz --ct ct.nii.gz \
     --totalseg total.nii.gz --tissueseg tissue.nii.gz --bodyseg body.nii.gz \
     --output-image sul.nii.gz --output-json sul.json --debug-image debug.png
 ```

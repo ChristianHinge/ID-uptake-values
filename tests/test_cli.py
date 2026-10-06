@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import nibabel as nib
 import numpy as np
@@ -55,3 +56,11 @@ def test_main_writes_outputs(module, extra, monkeypatch, tmp_path):
 
     assert out_img.exists()
     assert json.loads(out_json.read_text()) == {"estimated_activity_MBq": 1.0}
+
+
+@pytest.mark.parametrize("command", ["suv_id", "sul_id"])
+def test_console_script_installed(command):
+    bin_dir = Path(sys.executable).parent
+    result = subprocess.run([str(bin_dir / command), "--help"], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert "--pet" in result.stdout
