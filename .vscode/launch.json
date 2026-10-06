@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: main2 sul_id (sub-000)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "id_uptake_values.sul",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--pet", "/depict/data/hedit/raw/sub-000/pet/sub-000_trc-18FFDG_rec-acstatPSF_pet.nii.gz",
+                "--ct", "/depict/data/hedit/raw/sub-000/anat/sub-000_acq-LOWDOSE_ce-none_rec-br38f_ct.nii.gz",
+                "--totalseg", "/depict/data/hedit/derivatives/totalsegmentator/sub-000/anat/sub-000_acq-LOWDOSE_ce-none_rec-br38f_seg-total_dseg.nii.gz",
+                "--tissueseg", "/depict/data/hedit/derivatives/totalsegmentator/sub-000/anat/sub-000_acq-LOWDOSE_ce-none_rec-br38f_seg-tissue_dseg.nii.gz",
+                "--bodyseg", "/depict/data/hedit/derivatives/totalsegmentator/sub-000/anat/sub-000_acq-LOWDOSE_ce-none_rec-br38f_seg-body_dseg.nii.gz",
+                "--output-image", "/tmp/sub-000_sul.nii.gz",
+                "--output-json", "/tmp/sub-000_sul.json"
+            ]
+        }
+    ]
+}
