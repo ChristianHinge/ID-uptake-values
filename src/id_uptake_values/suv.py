@@ -4,6 +4,7 @@ from pathlib import Path
 
 import nibabel as nib
 
+from .debug_plots import create_debug_image
 from .estimation import build_outputs, estimate_dose_and_volume, knn_model
 from .models import KNNBodyVolume
 
@@ -22,10 +23,11 @@ def parse_args():
     parser.add_argument("--bodyseg", required=True, type=Path, help="Path to TotalSegmentator body segmentation (NIfTI).")
     parser.add_argument("--output-image", type=Path, default=None, help="Path to save the SUV image (NIfTI).")
     parser.add_argument("--output-json", type=Path, default=None, help="Path to save the SUV constants (JSON).")
+    parser.add_argument("--debug-image", type=Path, default=None, help="Path to save a debug PNG of the axial cropping and ADF.")
     args = parser.parse_args()
 
-    if args.output_image is None and args.output_json is None:
-        parser.error("at least one of --output-image or --output-json must be given")
+    if args.output_image is None and args.output_json is None and args.debug_image is None:
+        parser.error("at least one of --output-image, --output-json or --debug-image must be given")
 
     return args
 
@@ -37,6 +39,12 @@ def main():
     ct_img = nib.load(args.ct)
     ts_total_img = nib.load(args.totalseg)
     ts_body_img = nib.load(args.bodyseg)
+
+    if args.debug_image is not None:
+        create_debug_image(pet_img, ct_img, ts_total_img, None, ts_body_img, args.debug_image, knn_model)
+
+    if args.output_image is None and args.output_json is None:
+        return
 
     suv_img, constants = suv_id(pet_img, ct_img, ts_total_img, ts_body_img)
 

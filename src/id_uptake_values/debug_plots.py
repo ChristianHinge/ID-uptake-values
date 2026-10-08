@@ -7,7 +7,7 @@ from nibabel.processing import resample_from_to
 
 from .adf import make_distribution_functions, get_ct_cylindrical_mask
 from .resampling import C1toSacrumResampler
-from .models import KNNLeanBodyMass, KNNActivity
+from .models import KNNActivity, KNNBodyVolume, KNNLeanBodyMass
 
 
 def _z_normalized(img, head, hip):
@@ -82,38 +82,41 @@ def _draw_adf(ax, model, adfs, band, name, prefix, greek, scale, unit):
 
 
 def create_debug_image(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img, out_path, model_dir):
+    """Debug plot for SUL, or for SUV when ts_tissue_img is None."""
+    is_sul = ts_tissue_img is not None
+    quantity = "SUL" if is_sul else "SUV"
     adfs = make_distribution_functions(pet_img, ts_total_img, ts_body_img, ts_tissue_img, ct_img)
     model_dose = KNNActivity(n_neighbors=40)
     model_dose.load_weights(Path(model_dir) / "activity")
-    model_volume = KNNLeanBodyMass(n_neighbors=40)
-    model_volume.load_weights(Path(model_dir) / "lbm")
-    sul_denominator = model_dose.predict(adfs) / model_volume.predict(adfs)
+    model_volume = KNNLeanBodyMass(n_neighbors=40) if is_sul else KNNBodyVolume(n_neighbors=40)
+    model_volume.load_weights(Path(model_dir) / ("lbm" if is_sul else "weight"))
+    denominator = model_dose.predict(adfs) / model_volume.predict(adfs)
 
     resampler = C1toSacrumResampler(adfs["ts_total_x"], adfs["ts_total_y"])
     head, hip = resampler.head_offset, resampler.hip_offset
 
-    sul_canon = nib.funcs.as_closest_canonical(nib.Nifti1Image(pet_img.get_fdata() / sul_denominator, affine=pet_img.affine))
+    pet_canon = nib.funcs.as_closest_canonical(nib.Nifti1Image(pet_img.get_fdata() / denominator, affine=pet_img.affine))
     ct_canon = nib.funcs.as_closest_canonical(ct_img)
     crop_mask = resample_from_to(get_ct_cylindrical_mask(ct_img), pet_img, order=0)
     crop_arr = nib.funcs.as_closest_canonical(crop_mask).get_fdata()
-    sul_arr = sul_canon.get_fdata()
+    pet_arr = pet_canon.get_fdata()
 
-    pet_band = _band(sul_canon, sul_arr.max(axis=1), head, hip, "gray_r", 0, 5, "")
+    pet_band = _band(pet_canon, pet_arr.max(axis=1), head, hip, "gray_r", 0, 5, "")
     ct_mip = np.clip(ct_canon.get_fdata(), -200, 250).mean(axis=1)
     ct_band = _band(ct_canon, ct_mip, head, hip, "gray_r", ct_mip.min(), np.percentile(ct_mip, 99.9), "")
 
     fig, (ax_td, ax_dose, ax_lbm) = plt.subplots(1, 3, figsize=(21, 7.5))
 
-    ax_td.imshow(sul_arr.max(axis=2).T, origin="lower", cmap="gray_r", vmin=0, vmax=5, aspect="equal")
+    ax_td.imshow(pet_arr.max(axis=2).T, origin="lower", cmap="gray_r", vmin=0, vmax=5, aspect="equal")
     ax_td.imshow(_overlay((crop_arr.max(axis=2) == 0).T, color=(1, 0, 0, 0.2)), origin="lower", aspect="equal")
-    ax_td.set_title("Top-down projection (SUL MIP) with cropping mask\nred = cropped by CT cylindrical mask")
+    ax_td.set_title(f"Top-down projection ({quantity} MIP) with cropping mask\nred = cropped by CT cylindrical mask")
     ax_td.set_xlabel("Transaxial voxel (x)")
     ax_td.set_ylabel("Transaxial voxel (y, posterior to anterior)")
 
     _draw_adf(ax_dose, model_dose, adfs, pet_band, "Dose ADF (PET)",
               prefix="A", greek="\u03b1", scale=1e6, unit="MBq")
-    _draw_adf(ax_lbm, model_volume, adfs, ct_band, "Lean body mass ADF (CT)",
-              prefix="LBM", greek="\u03b2", scale=1e3, unit="kg")
+    _draw_adf(ax_lbm, model_volume, adfs, ct_band, "Lean body mass ADF (CT)" if is_sul else "Body mass ADF (CT)",
+              prefix="LBM" if is_sul else "M", greek="\u03b2", scale=1e3, unit="kg")
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)

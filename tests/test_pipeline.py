@@ -49,3 +49,10 @@ def test_debug_image_sub000(sub000, tmp_path):
     out = tmp_path / "debug.png"
     create_debug_image(*(nib.load(sub000[k]) for k in ("pet", "ct", "totalseg", "tissueseg", "bodyseg")), out, knn_model)
     assert out.stat().st_size > 0
+
+
+def test_suv_debug_image_sub000(sub000, tmp_path):
+    out = tmp_path / "debug_suv.png"
+    create_debug_image(nib.load(sub000["pet"]), nib.load(sub000["ct"]), nib.load(sub000["totalseg"]), None,
+                       nib.load(sub000["bodyseg"]), out, knn_model)
+    assert out.stat().st_size > 0
