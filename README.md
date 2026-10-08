@@ -22,7 +22,7 @@ suv_id --pet pet.nii.gz --ct ct.nii.gz \
     --totalseg total.nii.gz --bodyseg body.nii.gz \
     --output-image suv.nii.gz --output-json suv.json --debug-image debug.png
 
-# SUL (--debug-image plots the C1/sacrum alignment and nearest-neighbour fit; also available for SUV)
+# SUL 
 sul_id --pet pet.nii.gz --ct ct.nii.gz \
     --totalseg total.nii.gz --tissueseg tissue.nii.gz --bodyseg body.nii.gz \
     --output-image sul.nii.gz --output-json sul.json --debug-image debug.png
