@@ -22,7 +22,7 @@ suv_id --pet pet.nii.gz --ct ct.nii.gz \
     --totalseg total.nii.gz --bodyseg body.nii.gz \
     --output-image suv.nii.gz --output-json suv.json
 
-# SUL (optionally with a debug plot of the alignment and nearest-neighbour fit)
+# SUL 
 sul_id --pet pet.nii.gz --ct ct.nii.gz \
     --totalseg total.nii.gz --tissueseg tissue.nii.gz --bodyseg body.nii.gz \
     --output-image sul.nii.gz --output-json sul.json --debug-image debug.png
