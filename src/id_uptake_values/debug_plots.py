@@ -6,6 +6,7 @@ import numpy as np
 from nibabel.processing import resample_from_to
 
 from .adf import make_distribution_functions, get_ct_cylindrical_mask
+from .bladder import BLADDER_WINDOW
 from .resampling import C1toSacrumResampler
 from .models import KNNActivity, KNNBodyVolume, KNNLeanBodyMass
 
@@ -43,10 +44,22 @@ def _draw_adf(ax, model, adfs, band, name, prefix, greek, scale, unit):
     nn_mean = model._nn_estimate(distance)
     fov_fraction = nn_mean[resmask].sum()
     fov_sum = model.fov_sum(adfs)
-    total = fov_sum / fov_fraction
+    total = model.predict(adfs)
     scaled_patient = yr / yr.sum() * fov_fraction
     neighbors = model.X[ixs]
     ymax = max(neighbors.max(), scaled_patient.max())
+
+    remove_bladder = getattr(model, "remove_bladder", False)
+    if remove_bladder:
+        uncut = KNNActivity(model.n_neighbors)
+        _, y_raw, _ = uncut._resample(adfs)
+        scaled_raw = y_raw / yr.sum() * fov_fraction  # same scaling as the cut curve
+        bladder = uncut.fov_sum(adfs) - fov_sum
+        ymax = max(ymax, scaled_raw.max())
+        ax.axvspan(*BLADDER_WINDOW, color="tab:orange", alpha=0.08, zorder=0)
+        ax.fill_between(x, scaled_patient, scaled_raw, where=scaled_raw > scaled_patient, color="tab:orange",
+                        alpha=0.7, zorder=2, label=f"Bladder removed ({bladder / scale:.1f} {unit})")
+        ax.plot(x, scaled_raw, color="r", linestyle=":", linewidth=1.2, zorder=2, label="Patient before bladder cut")
 
     for neighbor in neighbors:
         ax.plot(x, neighbor, color="0.5", linewidth=0.6, alpha=0.5)
@@ -74,6 +87,8 @@ def _draw_adf(ax, model, adfs, band, name, prefix, greek, scale, unit):
 
     ax.set_xlim(-3, 0.75)
     ax.set_ylim(0, ytop)
+    if remove_bladder:
+        name += " - bladder removed"
     ax.set_title(f"{name}\n{prefix}_total = {total / scale:.1f} {unit}, FOV fraction {greek} = {fov_fraction * 100:.1f}%")
     ax.set_xlabel("Normalized axial position (z)")
     ax.set_ylabel("Volume distribution density")
@@ -81,12 +96,13 @@ def _draw_adf(ax, model, adfs, band, name, prefix, greek, scale, unit):
     return total, fov_sum, fov_fraction
 
 
-def create_debug_image(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img, out_path, model_dir):
+def create_debug_image(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img, out_path, model_dir,
+                       remove_bladder=False):
     """Debug plot for SUL, or for SUV when ts_tissue_img is None."""
     is_sul = ts_tissue_img is not None
     quantity = "SUL" if is_sul else "SUV"
     adfs = make_distribution_functions(pet_img, ts_total_img, ts_body_img, ts_tissue_img, ct_img)
-    model_dose = KNNActivity(n_neighbors=40)
+    model_dose = KNNActivity(n_neighbors=40, remove_bladder=remove_bladder)
     model_dose.load_weights(Path(model_dir) / "activity")
     model_volume = KNNLeanBodyMass(n_neighbors=40) if is_sul else KNNBodyVolume(n_neighbors=40)
     model_volume.load_weights(Path(model_dir) / ("lbm" if is_sul else "weight"))

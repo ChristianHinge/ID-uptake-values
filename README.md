@@ -32,6 +32,8 @@ The JSON contains the estimated activity (MBq), the estimated body mass or lean 
 
 The scan must cover the region from C1 to the sacrum; otherwise a `ValueError` is raised.
 
+Add `--remove-bladder` (or `remove_bladder=True` in `suv_id` / `sul_id`) to exclude the bladder from the activity estimate. The spike just below the sacrum is cut from both the reference and patient curves (references are renormalised to sum to 1), so the nearest-neighbour matching ignores bladder filling and `estimated_activity_MBq` is the total activity excluding the bladder. Off by default.
+
 ## Development
 
 ```

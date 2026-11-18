@@ -2,7 +2,8 @@ from pathlib import Path
 
 import numpy as np
 
-from .resampling import C1toSacrumResampler
+from .bladder import cut_bladder
+from .resampling import GRID_RANGE, C1toSacrumResampler
 
 
 class KNNModel:
@@ -56,8 +57,26 @@ class KNNModel:
 
 
 class KNNActivity(KNNModel):
+    """Activity model. With remove_bladder=True the bladder spike is cut from the
+    reference curves (renormalised to sum to 1) and from the patient curve, so
+    predict() returns the total activity excluding the bladder."""
+
+    def __init__(self, n_neighbors, distance_function="MAE", remove_bladder=False):
+        super().__init__(n_neighbors, distance_function)
+        self.remove_bladder = remove_bladder
+
     def load_batch(self, data):
-        return data["pet_x"], data["pet_y"]
+        x, y = data["pet_x"], data["pet_y"]
+        if self.remove_bladder:
+            resampler = C1toSacrumResampler(data["ts_total_x"], data["ts_total_y"])
+            y = cut_bladder(y, resampler.normalize(x))
+        return x, y
+
+    def load_weights(self, directory):
+        super().load_weights(directory)
+        if self.remove_bladder:
+            self.X = cut_bladder(self.X, np.linspace(*GRID_RANGE, self.X.shape[1]))
+            self.X /= self.X.sum(axis=-1, keepdims=True)
 
 
 class KNNLeanBodyMass(KNNModel):

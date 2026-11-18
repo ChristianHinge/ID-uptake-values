@@ -8,9 +8,10 @@ from .models import KNNActivity
 knn_model = Path(__file__).parent / "weights/knn-melanoma-fdg"
 
 
-def estimate_dose_and_volume(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img, volume_model, volume_dir):
+def estimate_dose_and_volume(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img, volume_model, volume_dir,
+                             remove_bladder=False):
     adfs = make_distribution_functions(pet_img, ts_total_img, ts_body_img, ts_tissue_img, ct_img)
-    model_dose = KNNActivity(n_neighbors=40)
+    model_dose = KNNActivity(n_neighbors=40, remove_bladder=remove_bladder)
     model_dose.load_weights(knn_model / "activity")
     model_volume = volume_model(n_neighbors=40)
     model_volume.load_weights(volume_dir)

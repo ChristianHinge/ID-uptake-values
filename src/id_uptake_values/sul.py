@@ -9,9 +9,9 @@ from .estimation import build_outputs, estimate_dose_and_volume, knn_model
 from .models import KNNLeanBodyMass
 
 
-def sul_id(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img):
+def sul_id(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img, remove_bladder=False):
     total_dose, total_volume = estimate_dose_and_volume(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img,
-                                                        KNNLeanBodyMass, knn_model / "lbm")
+                                                        KNNLeanBodyMass, knn_model / "lbm", remove_bladder)
     return build_outputs(pet_img, total_dose, total_volume, "sul", "estimated_lbm_kg")
 
 
@@ -25,6 +25,8 @@ def parse_args():
     parser.add_argument("--output-image", type=Path, default=None, help="Path to save the SUL image (NIfTI).")
     parser.add_argument("--output-json", type=Path, default=None, help="Path to save the SUL constants (JSON).")
     parser.add_argument("--debug-image", type=Path, default=None, help="Path to save a debug PNG of the axial cropping and ADF.")
+    parser.add_argument("--remove-bladder", action="store_true",
+                        help="Exclude the bladder spike (below the sacrum) from the activity nearest-neighbour matching.")
     args = parser.parse_args()
 
     if args.output_image is None and args.output_json is None and args.debug_image is None:
@@ -43,12 +45,13 @@ def main():
     ts_body_img = nib.load(args.bodyseg)
 
     if args.debug_image is not None:
-        create_debug_image(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img, args.debug_image, knn_model)
+        create_debug_image(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img, args.debug_image, knn_model,
+                           args.remove_bladder)
 
     if args.output_image is None and args.output_json is None:
         return
 
-    sul_img, constants = sul_id(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img)
+    sul_img, constants = sul_id(pet_img, ct_img, ts_total_img, ts_tissue_img, ts_body_img, args.remove_bladder)
 
     if args.output_image is not None:
         args.output_image.parent.mkdir(parents=True, exist_ok=True)

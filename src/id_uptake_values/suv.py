@@ -9,9 +9,9 @@ from .estimation import build_outputs, estimate_dose_and_volume, knn_model
 from .models import KNNBodyVolume
 
 
-def suv_id(pet_img, ct_img, ts_total_img, ts_body_img):
+def suv_id(pet_img, ct_img, ts_total_img, ts_body_img, remove_bladder=False):
     total_dose, total_body_mass = estimate_dose_and_volume(pet_img, ct_img, ts_total_img, None, ts_body_img,
-                                                           KNNBodyVolume, knn_model / "weight")
+                                                           KNNBodyVolume, knn_model / "weight", remove_bladder)
     return build_outputs(pet_img, total_dose, total_body_mass, "suv", "estimated_body_mass_kg")
 
 
@@ -24,6 +24,8 @@ def parse_args():
     parser.add_argument("--output-image", type=Path, default=None, help="Path to save the SUV image (NIfTI).")
     parser.add_argument("--output-json", type=Path, default=None, help="Path to save the SUV constants (JSON).")
     parser.add_argument("--debug-image", type=Path, default=None, help="Path to save a debug PNG of the axial cropping and ADF.")
+    parser.add_argument("--remove-bladder", action="store_true",
+                        help="Exclude the bladder spike (below the sacrum) from the activity nearest-neighbour matching.")
     args = parser.parse_args()
 
     if args.output_image is None and args.output_json is None and args.debug_image is None:
@@ -41,12 +43,13 @@ def main():
     ts_body_img = nib.load(args.bodyseg)
 
     if args.debug_image is not None:
-        create_debug_image(pet_img, ct_img, ts_total_img, None, ts_body_img, args.debug_image, knn_model)
+        create_debug_image(pet_img, ct_img, ts_total_img, None, ts_body_img, args.debug_image, knn_model,
+                           args.remove_bladder)
 
     if args.output_image is None and args.output_json is None:
         return
 
-    suv_img, constants = suv_id(pet_img, ct_img, ts_total_img, ts_body_img)
+    suv_img, constants = suv_id(pet_img, ct_img, ts_total_img, ts_body_img, args.remove_bladder)
 
     if args.output_image is not None:
         args.output_image.parent.mkdir(parents=True, exist_ok=True)

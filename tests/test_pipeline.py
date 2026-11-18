@@ -56,3 +56,12 @@ def test_suv_debug_image_sub000(sub000, tmp_path):
     create_debug_image(nib.load(sub000["pet"]), nib.load(sub000["ct"]), nib.load(sub000["totalseg"]), None,
                        nib.load(sub000["bodyseg"]), out, knn_model)
     assert out.stat().st_size > 0
+
+
+def test_suv_remove_bladder_sub000(sub000):
+    args = (nib.load(sub000["pet"]), nib.load(sub000["ct"]), nib.load(sub000["totalseg"]), nib.load(sub000["bodyseg"]))
+    _, off = suv.suv_id(*args)
+    _, on = suv.suv_id(*args, remove_bladder=True)
+
+    assert on["estimated_activity_MBq"] > 0
+    assert on["estimated_body_mass_kg"] == off["estimated_body_mass_kg"]
